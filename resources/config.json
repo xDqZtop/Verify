@@ -1,0 +1,6 @@
+{
+  "players": {},
+  "error-in-game": "you can only use this command in console!",
+  "error-join": "You are not verifyed!\n Please send Message to Support :)",
+  "success-join": "lobby"
+}

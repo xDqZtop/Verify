@@ -1,0 +1,11 @@
+name: Verify-beta
+version: 1.0.0
+api: 5.0.0
+main: xDqZtop\verify\Main
+
+commands:
+  verify:
+    permission: verify.command
+permissions:
+  verify.command:
+    default: op
