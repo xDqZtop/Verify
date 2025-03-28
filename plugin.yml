@@ -2,6 +2,8 @@ name: Verify-beta
 version: 1.0.0
 api: 5.0.0
 main: xDqZtop\verify\Main
+author: xDqZtop
+description: a Simple Verify Plugin.
 
 commands:
   verify:
