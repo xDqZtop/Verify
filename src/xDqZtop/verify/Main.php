@@ -9,7 +9,6 @@ use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerJoinEvent;
-use pocketmine\player\Player;
 use pocketmine\plugin\PluginBase;
 use pocketmine\utils\Config;
 use pocketmine\utils\TextFormat as TF;
@@ -84,7 +83,9 @@ class Main extends PluginBase implements Listener {
 
     private function exists(string $name): bool
     {
-        return $this->config->exists("players.$name");
+        $name = strtolower($name);
+        $players = $this->config->get("players", []);
+        return in_array($name, $players, true);
     }
 
     /**
@@ -92,8 +93,14 @@ class Main extends PluginBase implements Listener {
      */
     public function verifyAdd(string $name): void
     {
-        $this->config->setNested("players.$name", true);
-        $this->config->save();
+        $name = strtolower($name);
+        $players = $this->config->get("players", []);
+
+        if (!in_array($name, $players, true)) {
+            $players[] = $name;
+            $this->config->set("players", $players);
+            $this->config->save();
+        }
     }
 
     /**
@@ -101,26 +108,34 @@ class Main extends PluginBase implements Listener {
      */
     public function verifyRemove(string $name): void
     {
-        $this->config->removeNested("players.$name");
-        $this->config->save();
+        $name = strtolower($name);
+        $players = $this->config->get("players", []);
+
+        $key = array_search($name, $players, true);
+        if ($key !== false) {
+            unset($players[$key]);
+            $this->config->set("players", array_values($players));
+            $this->config->save();
+        }
     }
 
     public function verifyList(): array
     {
-        return array_keys($this->config->getNested("players", []));
+        return $this->config->get("players", []);
     }
 
     public function onJoin(PlayerJoinEvent $event): void
     {
         $player = $event->getPlayer();
-        $name = $player->getName();
+        $name = strtolower($player->getName());
 
         if (!$this->exists($name)) {
-            $player->kick(TF::RED . $this->getConfig()->get("error-join", "You are not verified!"));
+            $errorMessage = $this->config->get("error-join", "You are not verified!");
+            $player->kick(TF::RED . $errorMessage);
         } else {
-            $server = $this->getConfig()->get("success-join");
-            if ($server !== null) {
-                $player->transfer($server);
+            $serverAddress = $this->config->get("success-join");
+            if (is_string($serverAddress) && $serverAddress !== "") {
+                $player->transfer($serverAddress);
             }
         }
 
