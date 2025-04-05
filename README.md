@@ -23,13 +23,13 @@ This plugin works with default settings, but can be customized in `config.yml`.
 - `/verify` - Main verification command
 
 ### Subcommands:
-| Command | Description | Permission | Aliases |
-|---------|-------------|------------|---------|
-| `/verify add <player>` | Verify a player | `verify.command` | `va` |
-| `/verify remove <player>` | Unverify a player | `verify.command` | `vremove`, `vunverify` |
-| `/verify list` | List verified players | `verify.command` | `vlist` |
-| `/verify createcode <player>` | Generate verification code | `verify.command` | `vcode`, `vcc` |
-| `/verify help` | Show help menu | none | `vhelp` |
+| Command | Description | Permission |
+|---------|-------------|------------|
+| `/verify add <player>` | Verify a player | `verify.command` |
+| `/verify remove <player>` | Unverify a player | `verify.command` |
+| `/verify list` | List verified players | `verify.command` |
+| `/verify createcode <player>` | Generate verification code | `verify.command` |
+| `/verify help` | Show help menu | none |
 
 ### Usage Examples:
 - `/verify add xDqZtop` - Verify player xDqZtop
