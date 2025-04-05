@@ -1,13 +1,18 @@
 name: Verify-beta
-version: 1.0.1
+version: 1.0.2
 api: 5.0.0
 main: xDqZtop\verify\Main
 author: xDqZtop
-description: a Simple Verify Plugin.
+description: A simple verification system for PocketMine servers
 
 commands:
   verify:
     permission: verify.command
+
 permissions:
   verify.command:
+    description: "Allows access to verify commands"
     default: op
+  verify.bypass:
+    description: "Bypass verification system"
+    default: false

@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 namespace xDqZtop\verify;
@@ -7,138 +6,100 @@ namespace xDqZtop\verify;
 use JsonException;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\event\Listener;
-use pocketmine\event\player\PlayerJoinEvent;
 use pocketmine\plugin\PluginBase;
-use pocketmine\utils\Config;
+use pocketmine\scheduler\ClosureTask;
 use pocketmine\utils\TextFormat as TF;
 
-class Main extends PluginBase implements Listener {
+class Main extends PluginBase {
 
-    public Config $config;
+    public static ?Main $instance = null;
+    public VerifyManager $verifyManager;
+    public Forms $forms;
 
-    protected function onEnable(): void
-    {
-        $logger = $this->getLogger();
-        $logger->notice("Loading...");
-
-        $this->saveResource("config.json");
-        $this->config = new Config($this->getDataFolder() . "config.json", Config::JSON);
-
-        $this->getServer()->getPluginManager()->registerEvents($this, $this);
-
-        $logger->notice("Enabled.");
+    public static function getInstance(): Main {
+        return self::$instance;
     }
 
-    protected function onDisable(): void
-    {
-        $this->getLogger()->notice("Disabled.");
+    protected function onEnable(): void {
+        self::$instance = $this;
+        $this->getLogger()->info(TF::GREEN . "Loading VerifySystem...");
+        $this->verifyManager = new VerifyManager($this);
+        $this->forms = new Forms($this);
+        $this->getServer()->getPluginManager()->registerEvents(new EventListener($this), $this);
+        $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(
+            fn() => $this->verifyManager->checkTimeouts()
+        ), 20 * 60);
+        $this->getLogger()->info(TF::GREEN . "VerifySystem enabled!");
+    }
+
+    public function getVerifyManager(): VerifyManager {
+        return $this->verifyManager;
+    }
+
+    public function getForms(): Forms {
+        return $this->forms;
     }
 
     /**
      * @throws JsonException
      */
-    public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool
-    {
+    public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool {
         if ($command->getName() !== "verify") {
             return false;
         }
 
         if (empty($args)) {
-            $sender->sendMessage(TF::MINECOIN_GOLD . "Usage: verify <add|remove|list> [name]");
+            $sender->sendMessage(TF::RED . "Usage: /verify <add|remove|list|createcode> [player]");
             return true;
         }
 
         $subCommand = strtolower($args[0]);
 
-        if ($subCommand === "list") {
-            $list = $this->verifyList();
-            $sender->sendMessage(TF::GREEN . "Verified players: " . TF::AQUA . implode(", ", $list));
-            return true;
-        }
-
-        if (!isset($args[1])) {
-            $sender->sendMessage(TF::RED . "Please specify a player name");
-            return true;
-        }
-
-        $name = $args[1];
-
         switch ($subCommand) {
             case "add":
-                $this->verifyAdd($name);
-                $sender->sendMessage(TF::GREEN . "Player " . TF::AQUA . $name . TF::GREEN . " verified!");
+                if (isset($args[1])) {
+                    $this->verifyManager->verifyPlayer($args[1]);
+                    $sender->sendMessage(TF::GREEN . "Player " . $args[1] . " has been verified!");
+                } else {
+                    $sender->sendMessage(TF::RED . "Usage: /verify add <player>");
+                }
                 break;
+
             case "remove":
-                $this->verifyRemove($name);
-                $sender->sendMessage(TF::GREEN . "Player " . TF::AQUA . $name . TF::GREEN . " unverified!");
+            case "unverify":
+                if (isset($args[1])) {
+                    $this->verifyManager->unverifyPlayer($args[1]);
+                    $sender->sendMessage(TF::GREEN . "Player " . $args[1] . " has been unverified!");
+                } else {
+                    $sender->sendMessage(TF::RED . "Usage: /verify remove <player>");
+                }
                 break;
+
+            case "list":
+                $verifiedPlayers = $this->verifyManager->getVerifiedPlayers();
+                $sender->sendMessage(TF::GREEN . "Verified players (" . count($verifiedPlayers) . "):");
+                $sender->sendMessage(implode(", ", $verifiedPlayers));
+                break;
+
+            case "createcode":
+            case "cc":
+                if (isset($args[1])) {
+                    $code = $this->verifyManager->createVerifyCode($args[1]);
+                    $sender->sendMessage(TF::GREEN . "Verification code for " . $args[1] . ": " . TF::YELLOW . $code);
+                } else {
+                    $sender->sendMessage(TF::RED . "Usage: /verify createcode <player>");
+                }
+                break;
+
             default:
-                $sender->sendMessage(TF::RED . "Unknown subcommand. Use: add, remove, or list");
+                $sender->sendMessage(TF::RED . "Unknown subcommand. Available: add, remove, list, createcode");
                 break;
         }
 
         return true;
     }
 
-    private function exists(string $name): bool
-    {
-        $name = strtolower($name);
-        $players = $this->config->get("players", []);
-        return in_array($name, $players, true);
-    }
-
-    /**
-     * @throws JsonException
-     */
-    public function verifyAdd(string $name): void
-    {
-        $name = strtolower($name);
-        $players = $this->config->get("players", []);
-
-        if (!in_array($name, $players, true)) {
-            $players[] = $name;
-            $this->config->set("players", $players);
-            $this->config->save();
-        }
-    }
-
-    /**
-     * @throws JsonException
-     */
-    public function verifyRemove(string $name): void
-    {
-        $name = strtolower($name);
-        $players = $this->config->get("players", []);
-
-        $key = array_search($name, $players, true);
-        if ($key !== false) {
-            unset($players[$key]);
-            $this->config->set("players", array_values($players));
-            $this->config->save();
-        }
-    }
-
-    public function verifyList(): array
-    {
-        return $this->config->get("players", []);
-    }
-
-    public function onJoin(PlayerJoinEvent $event): void
-    {
-        $player = $event->getPlayer();
-        $name = strtolower($player->getName());
-
-        if (!$this->exists($name)) {
-            $errorMessage = $this->config->get("error-join", "You are not verified!");
-            $player->kick(TF::RED . $errorMessage);
-        } else {
-            $serverAddress = $this->config->get("success-join");
-            if (is_string($serverAddress) && $serverAddress !== "") {
-                $player->transfer($serverAddress);
-            }
-        }
-
-        $event->setJoinMessage("");
+    protected function onDisable(): void {
+        $this->getLogger()->info(TF::RED . "VerifySystem disabled!");
     }
 }

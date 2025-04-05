@@ -1,0 +1,9 @@
+server_address: "lobby"
+verification_timeout: 120  # Seconds
+
+timeout_message: "You took too long to verify!"
+device_mismatch: "Device verification failed!"
+verify_success: "You have been verified successfully!"
+verify_failed: "Invalid verification code!"
+leave_message: "Thanks for visiting!"
+contact-support: "Please contact our support team!"
